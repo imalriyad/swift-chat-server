@@ -1,24 +1,22 @@
-const express = require("express");
-const cors = require("cors");
+const express = require('express');
 const app = express();
+require('dotenv').config();
+const cors = require('cors');
+const http = require('http');
+const serverio = require('socket.io');
 const port = process.env.PORT || 5000;
-const http = require("http");
-const serverio = require("socket.io");
-const server = http.createServer(app);
-const io = serverio(server, {
-  cors: {
-      origin: "https://timely-basbousa-4722d6.netlify.app",
-      methods: ["GET", "POST"]
-  }
-});
-// const path = require("path");
+
 
 app.use(cors());
-// app.use(express.static("swift-chat-client/dist"));
 
-// app.get("*", (req, res) => {
-//   res.sendFile(path.resolve(__dirname, "swift-chat-client/dist/index.html"));
-// });
+const server = http.createServer(app);
+const io = serverio(server, {
+    cors: {
+        origin: "https://timely-basbousa-4722d6.netlify.app",
+        methods: ["GET", "POST"]
+    }
+});
+
 
 io.on("connection", (socket) => {
   socket.on("connection", (userName) => {
