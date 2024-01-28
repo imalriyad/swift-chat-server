@@ -6,13 +6,12 @@ const http = require('http');
 const serverio = require('socket.io');
 const port = process.env.PORT || 5000;
 
-
 app.use(cors());
 
 const server = http.createServer(app);
 const io = serverio(server, {
     cors: {
-        origin: "https://timely-basbousa-4722d6.netlify.app",
+        origin: "https://swiftchatx.netlify.app",
         methods: ["GET", "POST"]
     }
 });
