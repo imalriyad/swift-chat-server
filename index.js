@@ -11,7 +11,7 @@ app.use(cors());
 const server = http.createServer(app);
 const io = serverio(server, {
     cors: {
-        origin: "https://swiftchatx.netlify.app",
+        origin: "http://localhost:5173",
         methods: ["GET", "POST"]
     }
 });
