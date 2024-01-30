@@ -7,7 +7,7 @@ const serverio = require("socket.io");
 const port = process.env.PORT || 5000;
 
 app.use(cors());
-app.use(express.json())
+app.use(express.json());
 const server = http.createServer(app);
 const io = serverio(server, {
   cors: {
@@ -39,15 +39,70 @@ async function run() {
     );
 
     const db = client.db("swiftChatDb");
-    const messagesCollection = db.collection("messages");
+    const conversationsCollection = db.collection("conversations");
     const userCollection = db.collection("users");
 
+    io.on("connection", (socket) => {
+      socket.on("connection", (userName) => {
+        socket.broadcast.emit(
+          "connection",
+          `${userName?.name} has joined the chat`
+        );
+      });
+
+      socket.on("sendMessage", (data) => {
+        socket.broadcast.emit("message", data);
+
+        // Storing messages to mongodb
+        app.post("/api/v1/save-message", async (req, res) => {
+          const data = req.body;
+          const conversationId = getConversationId(
+            data.senderEmail,
+            data.receiverEmail
+          );
+          const result = await conversationsCollection.updateOne(
+            { _id: conversationId },
+            { $push: { messages: data } },
+            { upsert: true }
+          );
+          res.send(result);
+        });
+      });
+
+      function getConversationId(senderEmail, receiverEmail) {
+        return `${senderEmail}-${receiverEmail}`;
+      }
+
+      socket.on("disconnect", () => {
+        console.log("A user disconnected");
+      });
+
+      socket.on("typing", (data) => {
+        socket.broadcast.emit("typing", data);
+      });
+    });
+
+    // Get messages for two users conversation
+    app.get("/api/v1/get-messages", async (req, res) => {
+      const searchingID = req?.query?.id;
+      console.log(searchingID);
+      const query = { _id: searchingID };
+      const result = await conversationsCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // api for getting user from db
+    app.get("/api/v1/get-user", async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+
+    // api for creating user on db
     app.post("/api/v1/create-user", async (req, res) => {
       const user = req.body;
-      console.log(user);
       const isExist = await userCollection.findOne({ email: user?.email });
       if (isExist) {
-        return res.send('exist');
+        return res.send("exist");
       }
       const result = await userCollection.insertOne(user);
       res.send(result);
@@ -62,28 +117,6 @@ async function run() {
   }
 }
 run().catch(console.dir);
-
-io.on("connection", (socket) => {
-  socket.on("connection", (userName) => {
-    socket.broadcast.emit(
-      "connection",
-      `${userName?.name} has joined the chat`
-    );
-  });
-
-  socket.on("sendMsg", (data) => {
-    console.log(data);
-    socket.broadcast.emit("broadcast", data);
-  });
-
-  socket.on("disconnect", () => {
-    console.log("User disconnected");
-  });
-
-  socket.on("typing", (data) => {
-    socket.broadcast.emit("typing", data);
-  });
-});
 
 server.listen(port, () => {
   console.log(`SwiftChat server is running on port : ${port}`);
