@@ -56,7 +56,7 @@ async function run() {
         // Storing messages to mongodb
         app.post("/api/v1/save-message", async (req, res) => {
           const data = req.body;
-          const conversationId = getConversationId(
+          const conversationId = createConversationId(
             data.senderEmail,
             data.receiverEmail
           );
@@ -69,9 +69,10 @@ async function run() {
         });
       });
 
-      function getConversationId(senderEmail, receiverEmail) {
-        return `${senderEmail}-${receiverEmail}`;
-      }
+      const createConversationId = (user1, user2) => {
+        const sortedEmails = [user1, user2].sort();
+        return sortedEmails.join("-");
+      };
 
       socket.on("disconnect", () => {
         console.log("A user disconnected");
