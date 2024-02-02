@@ -39,6 +39,23 @@ const client = new MongoClient(uri, {
   },
 });
 
+// middlware for securing api's
+const verifyUser = (req, res, next) => {
+  const token = req.cookies?.token;
+  if (!token) {
+    return res.status(401).send({ message: "Unauthorized" });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, (error, decoded) => {
+    if (error) {
+      return res.status(401).send({ message: "Unauthorized" });
+    }
+    
+    req.user = decoded;
+    next();
+  });
+};
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -85,7 +102,7 @@ async function run() {
         data.receiverEmail
       );
       const result = await conversationsCollection.updateOne(
-        { _id: conversationId },
+        { _id: conversationId, userEmail: data.senderEmail },
         { $push: { messages: data } },
         { upsert: true }
       );
@@ -98,9 +115,10 @@ async function run() {
     };
 
     // Get messages for two users conversation
-    app.get("/api/v1/get-messages", async (req, res) => {
-      const searchingID = req?.query?.id;
-      const query = { _id: searchingID };
+    app.get("/api/v1/get-messages", verifyUser, async (req, res) => {
+      const searchingID = req.query?.id;
+      const userEmail = req.user.email;
+      const query = { _id: searchingID, userEmail };
       const result = await conversationsCollection.find(query).toArray();
       res.send(result);
     });
