@@ -1,9 +1,7 @@
 const express = require("express");
 const app = express();
 require("dotenv").config();
-var jwt = require("jsonwebtoken");
 const cors = require("cors");
-const cookieParser = require("cookie-parser");
 const http = require("http");
 const serverio = require("socket.io");
 const port = process.env.PORT || 5000;
@@ -16,14 +14,14 @@ app.use(
   })
 );
 app.use(express.json());
-app.use(cookieParser());
+
 
 const server = http.createServer(app);
 const io = serverio(server, {
   allowEIO3: true,
   cors: {
     origin: "http://localhost:5173",
-    credentials: true, // Allow credentials (cookies)
+    credentials: true,
   },
 });
 
@@ -39,22 +37,7 @@ const client = new MongoClient(uri, {
   },
 });
 
-// middlware for securing api's
-const verifyUser = (req, res, next) => {
-  const token = req.cookies?.token;
-  if (!token) {
-    return res.status(401).send({ message: "Unauthorized" });
-  }
 
-  jwt.verify(token, process.env.JWT_SECRET, (error, decoded) => {
-    if (error) {
-      return res.status(401).send({ message: "Unauthorized" });
-    }
-    
-    req.user = decoded;
-    next();
-  });
-};
 
 async function run() {
   try {
@@ -102,7 +85,7 @@ async function run() {
         data.receiverEmail
       );
       const result = await conversationsCollection.updateOne(
-        { _id: conversationId, userEmail: data.senderEmail },
+        { _id: conversationId},
         { $push: { messages: data } },
         { upsert: true }
       );
@@ -115,42 +98,14 @@ async function run() {
     };
 
     // Get messages for two users conversation
-    app.get("/api/v1/get-messages", verifyUser, async (req, res) => {
+    app.get("/api/v1/get-messages", async (req, res) => {
       const searchingID = req.query?.id;
-      const userEmail = req.user.email;
-      const query = { _id: searchingID, userEmail };
+      const query = { _id: searchingID };
       const result = await conversationsCollection.find(query).toArray();
       res.send(result);
     });
 
-    // creating jwt token on login
-    app.post("/api/v1/jwt-token", (req, res) => {
-      const userEmail = req?.body?.email;
-      const token = jwt.sign({ email: userEmail }, process.env.JWT_SECRET, {
-        expiresIn: "30d",
-      });
-
-      res
-        .cookie("token", token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-        })
-
-        .send({ success: true });
-    });
-
-    // Removing cookie when user logout
-    app.post("/api/v1/logout", async (req, res) => {
-      res
-        .clearCookie("token", {
-          maxAge: 0,
-          secure: process.env.NODE_ENV === "production" ? true : false,
-          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-        })
-        .send({ status: true });
-    });
-
+  
     // get user by searching
     app.get("/api/v1/user", async (req, res) => {
       const searchQuery = req.query?.name;
