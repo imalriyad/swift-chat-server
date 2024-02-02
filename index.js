@@ -9,18 +9,17 @@ const port = process.env.PORT || 5000;
 // Middleware
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: ["https://swiftchatx.netlify.app", "http://localhost:5173"],
     credentials: true,
   })
 );
 app.use(express.json());
 
-
 const server = http.createServer(app);
 const io = serverio(server, {
   allowEIO3: true,
   cors: {
-    origin: "http://localhost:5173",
+    origin: ["https://swiftchatx.netlify.app", "http://localhost:5173"],
     credentials: true,
   },
 });
@@ -36,8 +35,6 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
-
-
 
 async function run() {
   try {
@@ -85,7 +82,7 @@ async function run() {
         data.receiverEmail
       );
       const result = await conversationsCollection.updateOne(
-        { _id: conversationId},
+        { _id: conversationId },
         { $push: { messages: data } },
         { upsert: true }
       );
@@ -105,7 +102,6 @@ async function run() {
       res.send(result);
     });
 
-  
     // get user by searching
     app.get("/api/v1/user", async (req, res) => {
       const searchQuery = req.query?.name;
